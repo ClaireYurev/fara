@@ -1,0 +1,17 @@
+Extension Structure (Manifest V3)
+/extension
+  manifest.json
+  /background
+    service-worker.js       ← All AI API calls live here
+  /content
+    freshservice.js         ← Detects ticket, injects UI button
+    extractor.js            ← DOM fallback parser
+  /sidepanel
+    panel.html + panel.js   ← Draft review UI
+  /options
+    options.html + options.js ← API keys, prompt config, KB upload
+  /lib
+    freshservice-api.js     ← Wrapper for FS REST API
+    openai.js               ← OpenAI call + retry logic
+    gemini.js               ← Gemini fallback
+    prompt-builder.js       ← Assembles final prompt

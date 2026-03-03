@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Fara",
+  "version": "1.0.0",
+  "description": "Tier 1 IT support AI draft reply generator for Freshservice",
+
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "activeTab",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "https://*.freshservice.com/*",
+    "https://api.openai.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://*.freshservice.com/*"],
+      "js": ["content/freshservice.js"],
+      "css": ["content/freshservice.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "side_panel": {
+    "default_path": "sidepanel/panel.html"
+  },
+
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+
+  "action": {
+    "default_title": "Freshservice AI Assistant"
+  }
+}

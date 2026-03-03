@@ -1,0 +1,355 @@
+// ─── Freshservice Mint UI Content Script ─────────────────────────────────────
+// Detects ticket pages, injects "Generate Reply" button, handles reply
+// field insertion, and provides DOM fallback scraping for the service worker.
+
+(function () {
+  'use strict';
+
+  // ── Config ──────────────────────────────────────────────────────────────────
+  const TICKET_URL_PATTERN = /\/a\/tickets\/(\d+)/;
+
+  // Mint UI selectors — these may need tweaking if Freshservice updates their UI.
+  // Check browser DevTools (Inspect Element) on the reply area if injection fails.
+  const SELECTORS = {
+    // The reply/note toolbar area where we inject our button
+    replyToolbar: [
+      '.reply-editor-footer',
+      '.conversation-reply-box .editor-footer',
+      '[data-testid="reply-editor-footer"]',
+      '.reply-box-footer',
+      '.cke_toolbar_end',                      // CKEditor toolbar fallback
+    ],
+    // The actual editable reply content area
+    replyEditor: [
+      '.ql-editor[contenteditable="true"]',    // Quill editor (most common in Mint)
+      '.cke_editable[contenteditable="true"]', // CKEditor fallback
+      '[data-testid="reply-editor"] [contenteditable="true"]',
+      '.reply-editor [contenteditable="true"]',
+      'iframe.cke_wysiwyg_frame',              // CKEditor iframe mode
+    ],
+    // Ticket subject heading
+    ticketSubject: [
+      '[data-testid="ticket-title"]',
+      '.ticket-header h1',
+      '.ticket-title',
+      'h1.ticket-name',
+    ],
+    // Ticket description body
+    ticketDescription: [
+      '[data-testid="ticket-description"]',
+      '.ticket-description .description-content',
+      '.ticket-body-description',
+    ],
+    // Requester name
+    requesterName: [
+      '[data-testid="requester-name"]',
+      '.requester-info .name',
+      '.ticket-requester-name',
+    ],
+    // Conversation thread messages
+    conversationItems: [
+      '.conversation-item',
+      '[data-testid="conversation-item"]',
+      '.activity-item.reply',
+    ],
+  };
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  let currentTicketId   = null;
+  let buttonInjected    = false;
+  let keepalivePort     = null;
+
+  // ── Boot: watch for URL changes (Mint UI is a SPA) ──────────────────────────
+  init();
+
+  function init() {
+    checkPage();
+
+    // MutationObserver catches SPA navigation (URL changes without full reload)
+    const observer = new MutationObserver(() => checkPage());
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Also listen for popstate (back/forward navigation)
+    window.addEventListener('popstate', checkPage);
+  }
+
+  function checkPage() {
+    const match = window.location.pathname.match(TICKET_URL_PATTERN);
+
+    if (!match) {
+      // Not a ticket page — clean up if we injected anything
+      if (buttonInjected) cleanup();
+      return;
+    }
+
+    const ticketId = match[1];
+
+    if (ticketId === currentTicketId && buttonInjected) return; // same ticket, already set up
+
+    currentTicketId = ticketId;
+    buttonInjected  = false;
+
+    // Toolbar might not be in the DOM yet (SPA lazy rendering) — poll for it
+    waitForElement(SELECTORS.replyToolbar, 8000)
+      .then(toolbar => injectButton(toolbar, ticketId))
+      .catch(() => {
+        // Toolbar never appeared — inject a floating fallback button instead
+        injectFloatingButton(ticketId);
+      });
+  }
+
+  // ── Button injection ─────────────────────────────────────────────────────────
+  function injectButton(toolbar, ticketId) {
+    if (document.getElementById('fs-ai-btn')) return; // already there
+
+    const btn = document.createElement('button');
+    btn.id        = 'fs-ai-btn';
+    btn.innerHTML = `<span class="spinner"></span><span class="btn-label">✦ Generate Reply</span>`;
+    btn.title     = 'Generate AI reply draft';
+
+    btn.addEventListener('click', () => handleGenerateClick(ticketId, btn));
+
+    // Insert at the start of the toolbar so it's always visible
+    toolbar.insertBefore(btn, toolbar.firstChild);
+    buttonInjected = true;
+  }
+
+  function injectFloatingButton(ticketId) {
+    if (document.getElementById('fs-ai-btn')) return;
+
+    const btn = document.createElement('button');
+    btn.id        = 'fs-ai-btn';
+    btn.innerHTML = `<span class="spinner"></span><span class="btn-label">✦ Generate Reply</span>`;
+    btn.title     = 'Generate AI reply draft';
+    btn.style.cssText = `
+      position: fixed; bottom: 80px; right: 24px;
+      z-index: 99998; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    `;
+
+    btn.addEventListener('click', () => handleGenerateClick(ticketId, btn));
+    document.body.appendChild(btn);
+    buttonInjected = true;
+  }
+
+  // ── Generate button click handler ────────────────────────────────────────────
+  async function handleGenerateClick(ticketId, btn) {
+    setButtonLoading(btn, true);
+    showBanner('Generating reply draft…', 'info');
+
+    // Open side panel immediately so user sees something happening
+    chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' });
+
+    // Keep service worker alive during generation
+    keepalivePort = chrome.runtime.connect({ name: 'keepalive' });
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type:     'GENERATE_REPLY',
+        ticketId: ticketId,
+      });
+
+      if (response?.success) {
+        const model = response.usedFallback
+          ? `Gemini 1.5 Pro (fallback)`
+          : `GPT-4o`;
+        showBanner(`✅ Draft ready — generated by ${model}`, 'success');
+
+        // Notify side panel that draft is ready
+        chrome.runtime.sendMessage({
+          type:     'DRAFT_READY',
+          ticketId: ticketId,
+          draft:    response.draft,
+          model:    response.model,
+          usedFallback: response.usedFallback,
+        });
+      } else {
+        showBanner(`❌ ${response?.error || 'Generation failed'}`, 'error');
+      }
+    } catch (err) {
+      showBanner(`❌ Error: ${err.message}`, 'error');
+    } finally {
+      setButtonLoading(btn, false);
+      if (keepalivePort) { keepalivePort.disconnect(); keepalivePort = null; }
+    }
+  }
+
+  // ── Reply field insertion (called from side panel via message) ────────────────
+  async function insertReplyText(text) {
+    // Try each editor selector in order
+    for (const selector of SELECTORS.replyEditor) {
+
+      // Handle CKEditor iframe separately
+      if (selector.includes('iframe')) {
+        const iframe = document.querySelector(selector);
+        if (iframe) {
+          try {
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            const body = doc.querySelector('body[contenteditable="true"]') || doc.body;
+            if (body) {
+              body.focus();
+              body.innerHTML = textToHtml(text);
+              return { success: true };
+            }
+          } catch (e) { continue; }
+        }
+        continue;
+      }
+
+      const editor = document.querySelector(selector);
+      if (!editor) continue;
+
+      editor.focus();
+
+      // Clear existing placeholder content
+      editor.innerHTML = '';
+
+      // Use execCommand for Quill/contenteditable (preserves undo history)
+      document.execCommand('selectAll', false, null);
+      document.execCommand('delete', false, null);
+      document.execCommand('insertHTML', false, textToHtml(text));
+
+      // Trigger input event so the editor's internal state updates
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+      editor.dispatchEvent(new Event('change', { bubbles: true }));
+
+      return { success: true };
+    }
+
+    return { success: false, error: 'Reply editor not found. Click the reply box first, then retry.' };
+  }
+
+  // ── DOM fallback scraper ──────────────────────────────────────────────────────
+  // Called by service worker if Freshservice API is unavailable.
+  function scrapeTicketFromDOM() {
+    try {
+      const subject = queryText(SELECTORS.ticketSubject) || document.title;
+      const description = queryText(SELECTORS.ticketDescription) || '';
+      const requesterName = queryText(SELECTORS.requesterName) || '';
+
+      // Scrape conversation thread
+      const conversations = [];
+      for (const selector of SELECTORS.conversationItems) {
+        const items = document.querySelectorAll(selector);
+        if (items.length === 0) continue;
+        items.forEach((item, i) => {
+          conversations.push({
+            id:         i,
+            body_text:  item.innerText || item.textContent || '',
+            created_at: item.querySelector('time')?.getAttribute('datetime') || '',
+            from_email: item.querySelector('.author-name, .from-name')?.textContent?.trim() || '',
+          });
+        });
+        break; // use first selector that found results
+      }
+
+      return {
+        ticket: {
+          id:               currentTicketId,
+          subject:          subject,
+          description_text: description,
+          requester:        { first_name: requesterName.split(' ')[0], email: '' },
+          priority:         2,
+          status:           2,
+          category:         '',
+          created_at:       new Date().toISOString(),
+          attachments:      [],
+        },
+        conversations,
+        attachments: [],
+      };
+    } catch (err) {
+      throw new Error(`DOM scrape failed: ${err.message}`);
+    }
+  }
+
+  // ── Message listener (from service worker + side panel) ──────────────────────
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
+    if (message.type === 'DOM_FALLBACK_REQUEST') {
+      try {
+        const ticketContext = scrapeTicketFromDOM();
+        sendResponse({ success: true, ticketContext });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+      return true;
+    }
+
+    if (message.type === 'INSERT_REPLY') {
+      insertReplyText(message.text)
+        .then(result => sendResponse(result))
+        .catch(err   => sendResponse({ success: false, error: err.message }));
+      return true;
+    }
+
+    if (message.type === 'GET_CURRENT_TICKET_ID') {
+      sendResponse({ ticketId: currentTicketId });
+      return false;
+    }
+  });
+
+  // ── Utility helpers ───────────────────────────────────────────────────────────
+  function waitForElement(selectors, timeoutMs = 5000) {
+    return new Promise((resolve, reject) => {
+      const check = () => {
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          if (el) { resolve(el); return; }
+        }
+      };
+      check();
+
+      const observer = new MutationObserver(() => {
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          if (el) { observer.disconnect(); resolve(el); return; }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      setTimeout(() => { observer.disconnect(); reject(new Error('Element not found')); }, timeoutMs);
+    });
+  }
+
+  function queryText(selectors) {
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) return el.innerText?.trim() || el.textContent?.trim() || '';
+    }
+    return '';
+  }
+
+  function textToHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+  }
+
+  function setButtonLoading(btn, loading) {
+    btn.disabled = loading;
+    btn.classList.toggle('loading', loading);
+  }
+
+  function showBanner(msg, type = 'info', durationMs = 5000) {
+    let banner = document.getElementById('fs-ai-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'fs-ai-banner';
+      banner.addEventListener('click', () => { banner.style.display = 'none'; });
+      document.body.appendChild(banner);
+    }
+    banner.textContent    = msg;
+    banner.className      = type;
+    banner.style.display  = 'block';
+    if (durationMs > 0) setTimeout(() => { banner.style.display = 'none'; }, durationMs);
+  }
+
+  function cleanup() {
+    document.getElementById('fs-ai-btn')?.remove();
+    document.getElementById('fs-ai-banner')?.remove();
+    buttonInjected = false;
+  }
+
+})();

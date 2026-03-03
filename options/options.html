@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Reply Assistant – Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ AI Reply Assistant Settings</h1>
+
+    <section>
+      <h2>Freshservice</h2>
+      <label>Subdomain (e.g. <code>yourcompany</code> from yourcompany.freshservice.com)
+        <input type="text" id="fs-subdomain" placeholder="yourcompany" />
+      </label>
+      <label>Freshservice API Key
+        <input type="password" id="fs-api-key" placeholder="Your FS API key" />
+      </label>
+    </section>
+
+    <section>
+      <h2>AI Models</h2>
+      <label>Primary Model
+        <select id="primary-model">
+          <option value="openai">OpenAI GPT-4o (recommended)</option>
+          <option value="gemini">Gemini 1.5 Pro</option>
+        </select>
+      </label>
+      <label>OpenAI API Key
+        <input type="password" id="openai-key" placeholder="sk-..." />
+      </label>
+      <label>Gemini API Key
+        <input type="password" id="gemini-key" placeholder="AIza..." />
+      </label>
+    </section>
+
+    <section>
+      <h2>Prompt Configuration</h2>
+      <label>Company Name (used in AI prompt)
+        <input type="text" id="company-name" placeholder="Acme Corp" />
+      </label>
+      <label>Custom System Prompt Override
+        <small>Leave blank to use the default Tier 1 IT prompt.</small>
+        <textarea id="system-prompt" rows="6" placeholder="You are a Tier 1 IT support technician at {company}..."></textarea>
+      </label>
+    </section>
+
+    <section>
+      <h2>Knowledge Base (Optional)</h2>
+      <p>Paste your SOPs, common fixes, or internal docs below. This text will be included in every AI prompt.</p>
+      <textarea id="knowledge-base" rows="10" placeholder="Paste your KB / SOPs here..."></textarea>
+      <p class="hint">Or upload a .txt / .md file: <input type="file" id="kb-file" accept=".txt,.md" /></p>
+    </section>
+
+    <div class="actions">
+      <button id="load-secrets-btn">📂 Load from secrets.json</button>
+      <input type="file" id="secrets-file" accept=".json" style="display:none" />
+      <button id="save-btn">💾 Save Settings</button>
+      <span id="save-status" class="status"></span>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --indigo:     #6366f1;
+  --indigo-dk:  #4f46e5;
+  --slate-900:  #0f172a;
+  --slate-700:  #334155;
+  --slate-500:  #64748b;
+  --slate-300:  #cbd5e1;
+  --slate-100:  #f1f5f9;
+  --slate-50:   #f8fafc;
+  --green:      #16a34a;
+  --red:        #dc2626;
+  --amber:      #b45309;
+  --radius:     8px;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  background: var(--slate-50);
+  color: var(--slate-900);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: white;
+  border-bottom: 1px solid var(--slate-300);
+  flex-shrink: 0;
+}
+
+.header-left  { display: flex; align-items: center; gap: 8px; }
+.logo         { font-size: 18px; color: var(--indigo); }
+.header-title { font-weight: 700; font-size: 14px; color: var(--slate-900); }
+
+#settings-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+#settings-btn:hover { opacity: 1; }
+
+/* ── Ticket bar ──────────────────────────────────────────────────────────── */
+.ticket-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--slate-100);
+  border-bottom: 1px solid var(--slate-300);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ticket-id      { font-weight: 700; color: var(--indigo); white-space: nowrap; }
+.ticket-subject { color: var(--slate-700); flex: 1;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.badge.openai   { background: #ede9fe; color: #6d28d9; }
+.badge.gemini   { background: #fef9c3; color: #854d0e; }
+.badge.fallback { background: #fef3c7; color: #92400e; }
+
+/* ── State panels ────────────────────────────────────────────────────────── */
+.state-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.state-panel.hidden { display: none !important; }
+
+/* Idle */
+.idle-icon  { font-size: 32px; opacity: 0.2; }
+.idle-title { font-weight: 700; font-size: 15px; color: var(--slate-700); }
+.idle-hint  { color: var(--slate-500); text-align: center; line-height: 1.6; }
+
+/* Loading */
+.loader-ring {
+  width: 36px; height: 36px;
+  border: 3px solid var(--slate-300);
+  border-top-color: var(--indigo);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-title { font-weight: 700; font-size: 15px; }
+.loading-hint  { color: var(--slate-500); }
+
+/* Error */
+.error-icon  { font-size: 28px; }
+.error-title { font-weight: 700; font-size: 15px; color: var(--red); }
+.error-hint  { color: var(--slate-500); text-align: center;
+               line-height: 1.5; max-width: 260px; }
+
+/* Draft */
+#state-draft {
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px;
+}
+
+.draft-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.draft-label   { font-weight: 700; font-size: 12px;
+                 text-transform: uppercase; letter-spacing: 0.05em;
+                 color: var(--slate-500); }
+.draft-actions { display: flex; gap: 4px; }
+
+.draft-area {
+  flex: 1;
+  min-height: 220px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.6;
+  color: var(--slate-900);
+  background: white;
+  transition: border-color 0.15s;
+}
+.draft-area:focus {
+  outline: none;
+  border-color: var(--indigo);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn-primary {
+  width: 100%;
+  padding: 10px;
+  background: var(--indigo);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-primary:hover    { background: var(--indigo-dk); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-secondary {
+  padding: 8px 14px;
+  background: white;
+  color: var(--slate-700);
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.btn-secondary:hover    { border-color: var(--indigo); color: var(--indigo); }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-icon {
+  background: none;
+  border: 1px solid var(--slate-300);
+  border-radius: 5px;
+  padding: 3px 7px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--slate-500);
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-icon:hover { color: var(--slate-900); border-color: var(--slate-500); }
+
+/* ── Regenerate section ──────────────────────────────────────────────────── */
+.regenerate-section {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.regen-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--slate-900);
+  background: white;
+  min-width: 0;
+}
+.regen-input:focus {
+  outline: none;
+  border-color: var(--indigo);
+}
+
+/* ── Footer / status bar ─────────────────────────────────────────────────── */
+footer {
+  padding: 7px 14px;
+  border-top: 1px solid var(--slate-300);
+  background: white;
+  flex-shrink: 0;
+  min-height: 30px;
+}
+
+.status-bar { font-size: 12px; color: var(--slate-500); }
+.status-bar.success { color: var(--green); }
+.status-bar.error   { color: var(--red);   }
+.status-bar.warning { color: var(--amber); }
+
+/* ── Utility ─────────────────────────────────────────────────────────────── */
+.hidden { display: none !important; }

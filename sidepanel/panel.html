@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Reply Assistant</title>
+  <link rel="stylesheet" href="panel.css" />
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header>
+    <div class="header-left">
+      <span class="logo">✦</span>
+      <span class="header-title">AI Reply Assistant</span>
+    </div>
+    <div class="header-right">
+      <button id="settings-btn" title="Open Settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- ── Ticket context bar ───────────────────────────────────────────────── -->
+  <div id="ticket-bar" class="ticket-bar hidden">
+    <span id="ticket-id-label" class="ticket-id"></span>
+    <span id="ticket-subject-label" class="ticket-subject"></span>
+    <span id="model-badge" class="badge"></span>
+  </div>
+
+  <!-- ── Empty / idle state ───────────────────────────────────────────────── -->
+  <div id="state-idle" class="state-panel">
+    <div class="idle-icon">✦</div>
+    <p class="idle-title">No draft yet</p>
+    <p class="idle-hint">Open a ticket and click<br><strong>✦ Generate Reply</strong> to begin.</p>
+  </div>
+
+  <!-- ── Loading state ────────────────────────────────────────────────────── -->
+  <div id="state-loading" class="state-panel hidden">
+    <div class="loader-ring"></div>
+    <p class="loading-title">Generating draft…</p>
+    <p id="loading-model-label" class="loading-hint">Contacting GPT-4o</p>
+  </div>
+
+  <!-- ── Error state ──────────────────────────────────────────────────────── -->
+  <div id="state-error" class="state-panel hidden">
+    <div class="error-icon">⚠️</div>
+    <p class="error-title">Generation failed</p>
+    <p id="error-message" class="error-hint"></p>
+    <button id="retry-btn" class="btn-secondary">↺ Retry</button>
+  </div>
+
+  <!-- ── Draft state ──────────────────────────────────────────────────────── -->
+  <div id="state-draft" class="state-panel hidden">
+
+    <div class="draft-toolbar">
+      <span class="draft-label">Draft reply</span>
+      <div class="draft-actions">
+        <button id="copy-btn"  class="btn-icon" title="Copy to clipboard">⧉</button>
+        <button id="clear-btn" class="btn-icon" title="Clear draft">✕</button>
+      </div>
+    </div>
+
+    <textarea
+      id="draft-textarea"
+      class="draft-area"
+      placeholder="Your AI-generated reply will appear here…"
+      spellcheck="true"
+    ></textarea>
+
+    <button id="insert-btn" class="btn-primary">
+      ↵ Insert into Reply Box
+    </button>
+
+    <div class="regenerate-section">
+      <input
+        type="text"
+        id="regen-instruction"
+        class="regen-input"
+        placeholder='Optional: "make it shorter", "more formal", "ask for ticket number"…'
+        maxlength="200"
+      />
+      <button id="regen-btn" class="btn-secondary">
+        ↺ Regenerate
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <footer>
+    <span id="status-bar" class="status-bar"></span>
+  </footer>
+
+  <script src="panel.js"></script>
+</body>
+</html>
