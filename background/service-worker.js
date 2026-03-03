@@ -29,8 +29,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleGenerateReply(ticketId, tab, instruction = null) {
   // 1. Load settings from storage
   const settings = await loadSettings();
-  // Pick up optional regeneration instruction from panel
-  const instruction = message?.instruction || null;
   validateSettings(settings); // throws if misconfigured
 
   // 2. Fetch ticket data from Freshservice API
@@ -42,9 +40,13 @@ async function handleGenerateReply(ticketId, tab, instruction = null) {
     });
     ticketContext = await api.getFullTicketContext(ticketId);
   } catch (err) {
-    // API failed — request DOM fallback from content script
+    // API failed — request DOM fallback from content script.
+    // tab may be undefined when the request originates from the side panel
+    // (sender.tab is only set for content script messages), so resolve lazily.
     console.warn('[AI Assistant] FS API failed, requesting DOM fallback:', err.message);
-    ticketContext = await requestDOMFallback(tab.id);
+    const tabId = tab?.id ?? await getActiveTabId();
+    if (tabId == null) throw new Error('FS API failed and no active tab found for DOM fallback.');
+    ticketContext = await requestDOMFallback(tabId);
   }
 
   // 3. Fetch image attachments as base64 (up to 5 images to control cost)
@@ -57,7 +59,7 @@ async function handleGenerateReply(ticketId, tab, instruction = null) {
     knowledgeBase:      settings.knowledgeBase,
   });
 
-  const userPrompt = buildUserPrompt({ ticket, conversations, attachments })
+  const userPrompt = buildUserPrompt(ticketContext)
   + (instruction ? `\n\n--- ADDITIONAL INSTRUCTION ---\n${instruction}` : '');
 
   // 5. Call AI (primary → retry → fallback)
@@ -162,6 +164,12 @@ async function fetchImageAttachments(attachments, settings) {
   return results
     .filter(r => r.status === 'fulfilled')
     .map(r => r.value);
+}
+
+// ─── Resolve the active tab ID (used when sender.tab is undefined, e.g. side panel) ──
+async function getActiveTabId() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab?.id ?? null;
 }
 
 // ─── Request DOM fallback from content script ─────────────────────────────────
