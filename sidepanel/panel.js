@@ -83,7 +83,7 @@
     if (message.type === 'GENERATION_STARTED') {
       currentTicketId = message.ticketId;
       showState('loading');
-      const primaryModel = message.primaryModel === 'gemini' ? 'Gemini 1.5 Pro' : 'GPT-4o';
+      const primaryModel = message.primaryModel === 'gemini' ? 'Gemini 2.0 Flash' : 'GPT-4o';
       el.loadingModelLbl.textContent = `Contacting ${primaryModel}…`;
     }
 
@@ -127,7 +127,7 @@
     const isGemini   = model?.includes('gemini') || usedFallback;
     const badgeText  = usedFallback
       ? `Gemini (fallback)`
-      : model?.includes('gemini') ? 'Gemini 1.5 Pro' : 'GPT-4o';
+      : model?.includes('gemini') ? 'Gemini 2.0 Flash' : 'GPT-4o';
     const badgeClass = usedFallback ? 'fallback' : isGemini ? 'gemini' : 'openai';
 
     el.modelBadge.textContent = badgeText;
@@ -213,7 +213,7 @@
     showState('loading');
 
     const settings     = await loadSettings();
-    const primaryModel = settings?.primaryModel === 'gemini' ? 'Gemini 1.5 Pro' : 'GPT-4o';
+    const primaryModel = settings?.primaryModel === 'gemini' ? 'Gemini 2.0 Flash' : 'GPT-4o';
     el.loadingModelLbl.textContent = `Contacting ${primaryModel}…`;
 
     try {
