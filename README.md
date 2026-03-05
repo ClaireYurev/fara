@@ -1,7 +1,7 @@
 # Freshservice AI Reply Assistant
 
 Chrome Extension (Manifest V3) that generates AI draft replies for 
-Freshservice support tickets using GPT-4o with Gemini 2.0 Flash fallback.
+Freshservice support tickets using OpenAI o3 with Gemini 2.5 Pro fallback.
 
 ## Setup
 
