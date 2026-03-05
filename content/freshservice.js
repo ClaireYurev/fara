@@ -11,14 +11,6 @@
   // Mint UI selectors — these may need tweaking if Freshservice updates their UI.
   // Check browser DevTools (Inspect Element) on the reply area if injection fails.
   const SELECTORS = {
-    // The reply/note toolbar area where we inject our button
-    replyToolbar: [
-      '.reply-editor-footer',
-      '.conversation-reply-box .editor-footer',
-      '[data-testid="reply-editor-footer"]',
-      '.reply-box-footer',
-      '.cke_toolbar_end',                      // CKEditor toolbar fallback
-    ],
     // The actual editable reply content area
     replyEditor: [
       '.ql-editor[contenteditable="true"]',    // Quill editor (most common in Mint)
@@ -89,42 +81,20 @@
     currentTicketId = ticketId;
     buttonInjected  = false;
 
-    // Toolbar might not be in the DOM yet (SPA lazy rendering) — poll for it
-    waitForElement(SELECTORS.replyToolbar, 8000)
-      .then(toolbar => injectButton(toolbar, ticketId))
-      .catch(() => {
-        // Toolbar never appeared — inject a floating fallback button instead
-        injectFloatingButton(ticketId);
-      });
+    // Fixed-position button doesn't depend on any parent element — inject now.
+    injectButton(ticketId);
   }
 
   // ── Button injection ─────────────────────────────────────────────────────────
-  function injectButton(toolbar, ticketId) {
+  // Always injected as a fixed-position element so we never depend on finding
+  // a specific Freshservice toolbar selector.
+  function injectButton(ticketId) {
     if (document.getElementById('fs-ai-btn')) return; // already there
 
     const btn = document.createElement('button');
     btn.id        = 'fs-ai-btn';
-    btn.innerHTML = `<span class="spinner"></span><span class="btn-label">✦ Generate Reply</span>`;
+    btn.innerHTML = `<span class="spinner"></span><span class="btn-label">+ Generate Reply</span>`;
     btn.title     = 'Generate AI reply draft';
-
-    btn.addEventListener('click', () => handleGenerateClick(ticketId, btn));
-
-    // Insert at the start of the toolbar so it's always visible
-    toolbar.insertBefore(btn, toolbar.firstChild);
-    buttonInjected = true;
-  }
-
-  function injectFloatingButton(ticketId) {
-    if (document.getElementById('fs-ai-btn')) return;
-
-    const btn = document.createElement('button');
-    btn.id        = 'fs-ai-btn';
-    btn.innerHTML = `<span class="spinner"></span><span class="btn-label">✦ Generate Reply</span>`;
-    btn.title     = 'Generate AI reply draft';
-    btn.style.cssText = `
-      position: fixed; bottom: 80px; right: 24px;
-      z-index: 99998; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-    `;
 
     btn.addEventListener('click', () => handleGenerateClick(ticketId, btn));
     document.body.appendChild(btn);
